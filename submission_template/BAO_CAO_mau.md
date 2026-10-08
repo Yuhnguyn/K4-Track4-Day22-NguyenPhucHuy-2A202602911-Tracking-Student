@@ -1,6 +1,6 @@
 # Báo cáo lab: chọn tracker cho 5 video
 
-**Nhóm:** ………………………… **Thành viên:** …………………………
+**Nhóm:** K4-Track4-Day22 **Thành viên:** Nguyễn Phúc Huy (2A202602911)
 
 Detector cố định: `yolo26n.pt`, ảnh 640 px, Re-ID `osnet_x0_25_msmt17`. Không đổi các mục này trong bài nộp chính.
 
@@ -11,10 +11,10 @@ Mỗi video: tracker bạn nộp, `conf`, `iou`, điều bạn **nhìn thấy** 
 | Video | Tracker | conf | iou | Quan sát khi xem video | Đã thử nhưng loại |
 |---|---|---|---|---|---|
 | video_1 (quảng trường, tĩnh, ban ngày) | botsort | 0.3 | 0.7 | Cảnh tĩnh, mật độ vừa. BoT-SORT (có Re-ID) giữ ID ổn khi hai người đi cắt nhau, ít đổi màu ID. NMS `iou 0.7` giữ được các hộp người đứng gần nhau. Recall còn thấp vì detector `conf 0.3` bỏ sót người nhỏ/xa. | bytetrack (HOTA 26.9), deepocsort (HOTA 27.4) thấp hơn; `conf 0.5` làm HOTA tụt còn 27.2 |
-| video_2 (phố đêm, tĩnh, rất đông) | | | | | |
-| video_3 (camera di động, ảnh nhỏ) | | | | | |
-| video_4 (trong nhà, camera di chuyển) | | | | | |
-| video_5 (trên xe bus, giao lộ đông) | | | | | |
+| video_2 (phố đêm, tĩnh, rất đông) | bytetrack | 0.3 | 0.5 | Camera tĩnh nên mô hình chuyển động đáng tin; ban đêm ngoại hình kém nên Re-ID không lợi. ByteTrack cho ít ID hơn và gần như không có track ngắn (16 ID, 0 mảnh vụn) so với botsort (23 ID, 3 mảnh vụn). | botsort: nhiều ID/mảnh vụn hơn ở cảnh tối, đông |
+| video_3 (camera di động, ảnh nhỏ) | botsort | 0.3 | 0.5 | Camera tự di chuyển làm "vận tốc" của tracker chuyển động sai; Re-ID nối lại người dù nền đổi. | bytetrack: dựa vị trí, mất ID khi cả khung hình dịch chuyển |
+| video_4 (trong nhà, camera di chuyển) | botsort | 0.3 | 0.5 | Camera tiến tới + kính phản chiếu → vị trí/vận tốc không đáng tin, cần ngoại hình để giữ ID và loại "người ma" trong gương. | bytetrack: dựa vị trí, dễ đổi ID khi camera tiến |
+| video_5 (trên xe bus, giao lộ đông) | botsort | 0.3 | 0.5 | Rung lắc làm vận tốc nhiễu; Re-ID ổn định hơn khi cả nền chuyển động và người cắt nhau ở giao lộ đông. | bytetrack: rung + đông → khớp vị trí kém, dễ đổi ID |
 
 ## 2. Số liệu video_1
 
@@ -66,6 +66,16 @@ Nút thắt của cảnh này **không nằm ở tracker mà ở detector**: m�
 
 Một hạn chế nữa của báo cáo này: đánh giá chất lượng track "bằng mắt" cho video_1 dựa trên số liệu và preview, chưa đối chiếu từng khung hình gây lỗi.
 
+### video_2 (phố đêm, camera tĩnh trên cao, rất đông)
+
+Chọn ByteTrack vì camera **đứng yên** nên mô hình chuyển động (Kalman filter + khớp IoU) đáng tin, còn **ban đêm** làm vector ngoại hình kém chất lượng — đúng chỗ Re-ID mất lợi thế. Trong lượt chạy 150 frame, ByteTrack cho **16 ID và 0 track ngắn**, còn BoT-SORT cho 23 ID với 3 mảnh vụn → ByteTrack ít bị vỡ danh tính hơn ở cảnh tối. Đám đông dày cũng là nơi ByteTrack phát huy bước gán thứ hai với các hộp conf thấp để bám người mờ.
+
+### video_3 (camera di động, ảnh nhỏ, ít khung/giây)
+
+Chọn BoT-SORT vì camera **tự di chuyển** làm vị trí của cùng một người dịch chuyển giữa hai frame, phá giả định "camera đứng yên" của tracker chuyển động — vận tốc suy ra bị sai. Phần **ngoại hình (Re-ID)** giúp nối lại danh tính dù khung nền đã đổi. Ảnh nhỏ và ít khung/giây càng làm dự đoán vận tốc kém chính xác, nên nghiêng hẳn về Re-ID. Đây là ví dụ điển hình cho quy tắc: **camera càng di chuyển thì càng cần Re-ID**.
+
 ## 4. Nếu có thêm thời gian
 
 Một hoặc hai câu: bạn sẽ thử tiếp điều gì (Re-ID khác, quét `conf` mịn hơn, xem frame gây lỗi…).
+
+Quét `conf` mịn hơn (0.20 / 0.25) quanh giá trị tốt nhất của `video_1` để tìm điểm cân bằng HOTA/MOTA, và tách vài frame bị đổi ID để xác định lỗi đến từ **detector bỏ sót** hay từ **tracker gán nhầm**. Ngoài bài nộp chính (được phép như phần mở rộng), có thể thử một mô hình Re-ID mạnh hơn cho cảnh đêm/rung.
